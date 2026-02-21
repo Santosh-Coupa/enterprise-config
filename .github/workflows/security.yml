@@ -29,6 +29,9 @@ jobs:
         run: |
           git config --global url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
 
+      - name: Debug secret length
+          run: echo "${{ secrets.AZURE_CREDENTIALS }}" | wc -c
+      
       - name: Azure Login
         uses: azure/login@v2
         with:
