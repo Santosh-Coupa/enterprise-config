@@ -36,7 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: opentofu/setup-opentofu@v1
-      
+        
       - name: Configure Git credentials
         run: |
           git config --global url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
