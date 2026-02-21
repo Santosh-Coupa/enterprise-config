@@ -23,13 +23,9 @@ permissions:
 # STEP 1 — NETWORK
 ##########################################################
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-  
-  environment:
-    name: ${{ github.event.inputs.environment }}
 
   network:
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: azure/network
@@ -75,6 +71,11 @@ jobs:
 
   network_apply:
     needs: network
+    runs-on: ubuntu-latest
+
+    environment:
+      name: ${{ github.event.inputs.environment }}
+
     defaults:
       run:
         working-directory: azure/network
@@ -85,6 +86,10 @@ jobs:
       - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Configure Git credentials
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
 
       - name: Init
         run: tofu init -backend-config="key=network-${{ github.event.inputs.environment }}.tfstate"
@@ -98,6 +103,7 @@ jobs:
 
   security:
     needs: network_apply
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: azure/security
@@ -111,6 +117,10 @@ jobs:
       - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Configure Git credentials
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
 
       - name: Init
         run: tofu init -backend-config="key=security-${{ github.event.inputs.environment }}.tfstate"
@@ -135,6 +145,7 @@ jobs:
     environment:
       name: ${{ github.event.inputs.environment }}
 
+
     defaults:
       run:
         working-directory: azure/security
@@ -145,6 +156,10 @@ jobs:
       - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Configure Git credentials
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
 
       - name: Init
         run: tofu init -backend-config="key=security-${{ github.event.inputs.environment }}.tfstate"
@@ -173,6 +188,10 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Configure Git credentials
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
+
       - name: Init
         run: tofu init -backend-config="key=compute-${{ github.event.inputs.environment }}.tfstate"
 
@@ -191,6 +210,11 @@ jobs:
 
   compute_apply:
     needs: compute
+    runs-on: ubuntu-latest
+
+    environment:
+      name: ${{ github.event.inputs.environment }}
+
     defaults:
       run:
         working-directory: azure/compute
@@ -201,6 +225,10 @@ jobs:
       - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Configure Git credentials
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
 
       - name: Init
         run: tofu init -backend-config="key=compute-${{ github.event.inputs.environment }}.tfstate"
