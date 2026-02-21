@@ -107,7 +107,7 @@ jobs:
 ##########################################################
 
   security:
-    needs: network_apply
+    #needs: network_apply
     runs-on: ubuntu-latest
 
     defaults:
@@ -190,7 +190,7 @@ jobs:
 ##########################################################
 
   compute:
-    needs: security_apply
+    #needs: security_apply
     runs-on: ubuntu-latest
 
     defaults:
