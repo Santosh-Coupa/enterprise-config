@@ -96,7 +96,7 @@ jobs:
         run: tofu init -backend-config="key=network-${{ github.event.inputs.environment }}.tfstate"
 
       - name: Apply
-        run: tofu apply -auto-approve tfplan
+        run: tofu apply -auto-approve -var-file=env/dev.tfvars
 
 ##########################################################
 # STEP 2 — SECURITY (AFTER NETWORK)
@@ -166,7 +166,7 @@ jobs:
         run: tofu init -backend-config="key=security-${{ github.event.inputs.environment }}.tfstate"
 
       - name: Apply
-        run: tofu apply -auto-approve tfplan
+        run: tofu apply -auto-approve -var-file=env/dev.tfvars
 
 ##########################################################
 # STEP 3 — COMPUTE (AFTER SECURITY)
@@ -235,4 +235,4 @@ jobs:
         run: tofu init -backend-config="key=compute-${{ github.event.inputs.environment }}.tfstate"
 
       - name: Apply
-        run: tofu apply -auto-approve tfplan
+        run: tofu apply -auto-approve -var-file=env/dev.tfvars
