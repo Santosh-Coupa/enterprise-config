@@ -1,5 +1,9 @@
 name: deploy-infra
 
+concurrency:
+  group: infra-global
+  cancel-in-progress: false
+
 on:
   push:
     branches: [ main ]

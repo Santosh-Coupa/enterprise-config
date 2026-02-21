@@ -1,5 +1,9 @@
 name: deploy-compute
 
+concurrency:
+  group: infra-global
+  cancel-in-progress: false
+
 on:
   workflow_dispatch:
     inputs:

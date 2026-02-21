@@ -1,5 +1,9 @@
 name: deploy-security
 
+concurrency:
+  group: infra-global
+  cancel-in-progress: false
+
 on:
   push:
     paths:
