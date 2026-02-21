@@ -26,9 +26,10 @@ jobs:
 
   network:
     runs-on: ubuntu-latest
-  defaults:
-    run:
-      working-directory: azure/network
+  
+    defaults:
+      run:
+        working-directory: azure/network
 
     outputs:
       destroy: ${{ steps.detect.outputs.destroy }}
