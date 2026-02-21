@@ -1,0 +1,113 @@
+name: deploy-infra
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      ###################################################
+      # Checkout & Setup
+      ###################################################
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+
+      - name: Configure Git credentials
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      ###################################################
+      # Detect Resource Group
+      ###################################################
+      - name: Check RG
+        id: check_rg
+        run: |
+          if az group exists --name rg-dev; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      ###################################################
+      # Deploy Network (only if RG or VNet missing)
+      ###################################################
+      - name: Check VNet
+        id: check_vnet
+        run: |
+          if az network vnet show \
+              --name dev-vnet \
+              --resource-group rg-dev >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy Network
+        if: steps.check_vnet.outputs.exists == 'false'
+        working-directory: azure/network
+        run: |
+          tofu init -input=false
+          tofu apply -auto-approve -input=false -lock-timeout=5m
+        env:
+          TF_LOG: TRACE
+          TF_LOG_PATH: tofu-network.log
+
+      ###################################################
+      # Detect NSG
+      ###################################################
+      - name: Check NSG
+        id: check_nsg
+        run: |
+          if az network nsg show \
+              --name dev-nsg \
+              --resource-group rg-dev >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy Security
+        if: steps.check_nsg.outputs.exists == 'false'
+        working-directory: azure/security
+        run: |
+          tofu init -input=false
+          tofu apply -auto-approve -input=false -lock-timeout=5m
+        env:
+          TF_LOG: TRACE
+          TF_LOG_PATH: tofu-security.log
+
+      ###################################################
+      # Deploy Compute (always)
+      ###################################################
+      - name: Deploy Compute
+        working-directory: azure/compute
+        run: |
+          tofu init -input=false
+          tofu apply -auto-approve -input=false -lock-timeout=5m
+        env:
+          TF_LOG: TRACE
+          TF_LOG_PATH: tofu-compute.log
+
+      ###################################################
+      # Upload Logs
+      ###################################################
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tofu-debug
+          path: |
+            azure/network/tofu-network.log
+            azure/security/tofu-security.log
+            azure/compute/tofu-compute.log

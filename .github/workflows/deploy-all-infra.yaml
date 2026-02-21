@@ -1,0 +1,206 @@
+name: deploy-all-infra
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Select environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - stg
+          - prod
+
+permissions:
+  contents: read
+
+##########################################################
+# STEP 1 — NETWORK
+##########################################################
+jobs:
+
+  network:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: azure/network
+
+    outputs:
+      destroy: ${{ steps.detect.outputs.destroy }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Init
+        run: |
+          tofu init \
+            -backend-config="key=network-${{ github.event.inputs.environment }}.tfstate"
+
+      - name: Plan
+        run: |
+          tofu plan \
+            -var-file=env/${{ github.event.inputs.environment }}.tfvars \
+            -out=tfplan
+
+      - name: Detect Destroy
+        id: detect
+        run: |
+          tofu show -json tfplan > plan.json
+          if jq -e '.resource_changes[]? | select(.change.actions | index("delete"))' plan.json > /dev/null; then
+            echo "destroy=true" >> $GITHUB_OUTPUT
+          else
+            echo "destroy=false" >> $GITHUB_OUTPUT
+          fi
+
+  network_apply:
+    needs: network
+    runs-on: ubuntu-latest
+
+    environment:
+      name: ${{ github.event.inputs.environment }}
+
+    defaults:
+      run:
+        working-directory: azure/network
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Init
+        run: tofu init -backend-config="key=network-${{ github.event.inputs.environment }}.tfstate"
+
+      - name: Apply
+        run: tofu apply -auto-approve tfplan
+
+##########################################################
+# STEP 2 — SECURITY (AFTER NETWORK)
+##########################################################
+
+  security:
+    needs: network_apply
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: azure/security
+
+    outputs:
+      destroy: ${{ steps.detect.outputs.destroy }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Init
+        run: tofu init -backend-config="key=security-${{ github.event.inputs.environment }}.tfstate"
+
+      - name: Plan
+        run: tofu plan -var-file=env/${{ github.event.inputs.environment }}.tfvars -out=tfplan
+
+      - name: Detect Destroy
+        id: detect
+        run: |
+          tofu show -json tfplan > plan.json
+          if jq -e '.resource_changes[]? | select(.change.actions | index("delete"))' plan.json > /dev/null; then
+            echo "destroy=true" >> $GITHUB_OUTPUT
+          else
+            echo "destroy=false" >> $GITHUB_OUTPUT
+          fi
+
+  security_apply:
+    needs: security
+    runs-on: ubuntu-latest
+
+    environment:
+      name: ${{ github.event.inputs.environment }}
+
+    defaults:
+      run:
+        working-directory: azure/security
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Init
+        run: tofu init -backend-config="key=security-${{ github.event.inputs.environment }}.tfstate"
+
+      - name: Apply
+        run: tofu apply -auto-approve tfplan
+
+##########################################################
+# STEP 3 — COMPUTE (AFTER SECURITY)
+##########################################################
+
+  compute:
+    needs: security_apply
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: azure/compute
+
+    outputs:
+      destroy: ${{ steps.detect.outputs.destroy }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Init
+        run: tofu init -backend-config="key=compute-${{ github.event.inputs.environment }}.tfstate"
+
+      - name: Plan
+        run: tofu plan -var-file=env/${{ github.event.inputs.environment }}.tfvars -out=tfplan
+
+      - name: Detect Destroy
+        id: detect
+        run: |
+          tofu show -json tfplan > plan.json
+          if jq -e '.resource_changes[]? | select(.change.actions | index("delete"))' plan.json > /dev/null; then
+            echo "destroy=true" >> $GITHUB_OUTPUT
+          else
+            echo "destroy=false" >> $GITHUB_OUTPUT
+          fi
+
+  compute_apply:
+    needs: compute
+    runs-on: ubuntu-latest
+
+    environment:
+      name: ${{ github.event.inputs.environment }}
+
+    defaults:
+      run:
+        working-directory: azure/compute
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Init
+        run: tofu init -backend-config="key=compute-${{ github.event.inputs.environment }}.tfstate"
+
+      - name: Apply
+        run: tofu apply -auto-approve tfplan

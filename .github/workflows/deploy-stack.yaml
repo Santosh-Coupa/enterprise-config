@@ -1,0 +1,146 @@
+name: deploy-stack
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Select service"
+        required: true
+        type: choice
+        options:
+          - network
+          - security
+          - compute
+      environment:
+        description: "Select environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - stg
+          - prod
+
+permissions:
+  contents: read
+
+############################################
+# JOB 1 — PLAN
+############################################
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: azure/${{ github.event.inputs.service }}
+
+    outputs:
+      has_destroy: ${{ steps.check_destroy.outputs.has_destroy }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Init
+        run: |
+          tofu init \
+            -backend-config="resource_group_name=tfstate-rg" \
+            -backend-config="storage_account_name=tfstateaccount" \
+            -backend-config="container_name=tfstate" \
+            -backend-config="key=${{ github.event.inputs.service }}-${{ github.event.inputs.environment }}.tfstate"
+
+      - name: Plan
+        run: |
+          tofu plan \
+            -var-file=env/${{ github.event.inputs.environment }}.tfvars \
+            -out=tfplan
+
+      - name: Detect Destroy Changes
+        id: check_destroy
+        run: |
+          tofu show -json tfplan > plan.json
+
+          if jq -e '
+            .resource_changes[]? 
+            | select(.change.actions | index("delete"))
+          ' plan.json > /dev/null; then
+            echo "has_destroy=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_destroy=false" >> $GITHUB_OUTPUT
+          fi
+
+############################################
+# JOB 2 — APPLY WITHOUT APPROVAL
+############################################
+
+  apply:
+    needs: plan
+    if: needs.plan.outputs.has_destroy == 'false'
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: azure/${{ github.event.inputs.service }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Init
+        run: |
+          tofu init \
+            -backend-config="resource_group_name=tfstate-rg" \
+            -backend-config="storage_account_name=tfstateaccount" \
+            -backend-config="container_name=tfstate" \
+            -backend-config="key=${{ github.event.inputs.service }}-${{ github.event.inputs.environment }}.tfstate"
+
+      - name: Apply (No Destroy Found)
+        run: tofu apply -auto-approve tfplan
+
+############################################
+# JOB 3 — APPLY WITH APPROVAL (DESTROY FOUND)
+############################################
+
+  apply_with_approval:
+    needs: plan
+    if: needs.plan.outputs.has_destroy == 'true'
+    runs-on: ubuntu-latest
+
+    # 🔐 Approval happens here
+    environment:
+      name: ${{ github.event.inputs.environment }}
+      url: https://portal.azure.com
+
+    defaults:
+      run:
+        working-directory: azure/${{ github.event.inputs.service }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Init
+        run: |
+          tofu init \
+            -backend-config="resource_group_name=tfstate-rg" \
+            -backend-config="storage_account_name=tfstateaccount" \
+            -backend-config="container_name=tfstate" \
+            -backend-config="key=${{ github.event.inputs.service }}-${{ github.event.inputs.environment }}.tfstate"
+
+      - name: Apply (Approval Required - Destroy Detected)
+        run: tofu apply -auto-approve tfplan

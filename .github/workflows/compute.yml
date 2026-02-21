@@ -1,0 +1,140 @@
+name: deploy-compute
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Select environment"
+        required: true
+        type: choice
+        options:
+          - dev
+          - stg
+          - prod
+      active_color:
+        description: "New active color (blue or green)"
+        required: true
+        type: choice
+        options:
+          - blue
+          - green
+
+permissions:
+  contents: read
+
+############################################
+# JOB 1 — DEPLOY NEW COLOR (NO APPROVAL)
+############################################
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: azure/compute
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+
+      - name: Configure Git credentials
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set Backend Key
+        run: |
+          if [ "${{ github.event.inputs.environment }}" = "dev" ]; then
+            echo "STATE_KEY=compute-dev.tfstate" >> $GITHUB_ENV
+          elif [ "${{ github.event.inputs.environment }}" = "stg" ]; then
+            echo "STATE_KEY=compute-stg.tfstate" >> $GITHUB_ENV
+          else
+            echo "STATE_KEY=compute-prd.tfstate" >> $GITHUB_ENV
+          fi
+
+      - name: Init
+        run: |
+          tofu init \
+            -backend-config="resource_group_name=tfstate-rg" \
+            -backend-config="storage_account_name=tfstateaccount" \
+            -backend-config="container_name=tfstate" \
+            -backend-config="key=${STATE_KEY}"
+
+      - name: Deploy New Color
+        run: |
+          tofu apply \
+            -var-file=env/${{ github.event.inputs.environment }}.tfvars \
+            -var="active_color=${{ github.event.inputs.active_color }}" \
+            -auto-approve \
+            -lock-timeout=5m
+
+      - name: Upload Debug Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-debug
+          path: azure/compute/*.log
+
+############################################
+# JOB 2 — APPROVAL BEFORE CLEANUP
+############################################
+
+  cleanup:
+    needs: deploy
+    runs-on: ubuntu-latest
+
+    # 🔐 Approval happens here
+    environment:
+      name: ${{ github.event.inputs.environment }}
+      url: https://portal.azure.com
+
+    defaults:
+      run:
+        working-directory: azure/compute
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set Backend Key
+        run: |
+          if [ "${{ github.event.inputs.environment }}" = "dev" ]; then
+            echo "STATE_KEY=compute-dev.tfstate" >> $GITHUB_ENV
+          elif [ "${{ github.event.inputs.environment }}" = "stg" ]; then
+            echo "STATE_KEY=compute-stg.tfstate" >> $GITHUB_ENV
+          else
+            echo "STATE_KEY=compute-prd.tfstate" >> $GITHUB_ENV
+          fi
+
+      - name: Init
+        run: |
+          tofu init \
+            -backend-config="resource_group_name=tfstate-rg" \
+            -backend-config="storage_account_name=tfstateaccount" \
+            -backend-config="container_name=tfstate" \
+            -backend-config="key=${STATE_KEY}"
+
+      - name: Cleanup Old Color
+        run: |
+          tofu apply \
+            -var-file=env/${{ github.event.inputs.environment }}.tfvars \
+            -var="active_color=${{ github.event.inputs.active_color }}" \
+            -var="cleanup_old=true" \
+            -auto-approve \
+            -lock-timeout=5m
+
+      - name: Upload Debug Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cleanup-debug
+          path: azure/compute/*.log

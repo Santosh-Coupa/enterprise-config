@@ -1,0 +1,24 @@
+- hosts: linux
+  become: yes
+  tasks:
+    - name: Update apt
+      apt:
+        update_cache: yes
+
+    - name: Install base packages
+      apt:
+        name:
+          - python3
+          - git
+          - curl
+        state: present
+
+    - name: Install nginx
+      apt:
+        name: nginx
+        state: present
+
+    - name: Restart nginx
+      service:
+        name: nginx
+        state: restarted

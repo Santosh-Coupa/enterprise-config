@@ -1,0 +1,47 @@
+name: deploy-security
+
+on:
+  push:
+    paths:
+      - "modules/security/**"
+      - "azure/security/**"
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: azure/security
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+
+      - name: Configure Git credentials
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Init
+        run: tofu init -input=false
+
+      - name: Apply
+        run: tofu apply -auto-approve -input=false -lock-timeout=5m
+        env:
+          TF_LOG: TRACE
+          TF_LOG_PATH: tofu-debug.log
+
+      - name: Upload debug logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-debug
+          path: azure/security/tofu-debug.log
