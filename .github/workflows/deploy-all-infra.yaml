@@ -41,7 +41,7 @@ jobs:
 
       - name: Configure Git credentials
         run: |
-          git config --global url."https://${{ github.token }}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
 
       - uses: azure/login@v2
         with:
@@ -90,7 +90,7 @@ jobs:
 
       - name: Configure Git credentials
         run: |
-          git config --global url."https://${{ github.token }}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
 
       - uses: azure/login@v2
         with:
@@ -124,7 +124,7 @@ jobs:
 
       - name: Configure Git credentials
         run: |
-          git config --global url."https://${{ github.token }}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
 
       - uses: azure/login@v2
         with:
@@ -173,7 +173,7 @@ jobs:
 
       - name: Configure Git credentials
         run: |
-          git config --global url."https://${{ github.token }}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
 
       - uses: azure/login@v2
         with:
@@ -207,7 +207,7 @@ jobs:
 
       - name: Configure Git credentials
         run: |
-          git config --global url."https://${{ github.token }}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
 
       - uses: azure/login@v2
         with:
@@ -256,7 +256,7 @@ jobs:
 
       - name: Configure Git credentials
         run: |
-          git config --global url."https://${{ github.token }}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
 
       - uses: azure/login@v2
         with:
