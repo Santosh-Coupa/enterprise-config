@@ -107,7 +107,8 @@ jobs:
 ##########################################################
 
   security:
-    #needs: network_apply
+    needs: [network, network_apply]
+    if: always()
     runs-on: ubuntu-latest
 
     defaults:
@@ -191,6 +192,8 @@ jobs:
 
   compute:
     #needs: security_apply
+    needs: [security, security_apply]
+    if: always()
     runs-on: ubuntu-latest
 
     defaults:
