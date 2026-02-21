@@ -23,9 +23,13 @@ permissions:
 # STEP 1 — NETWORK
 ##########################################################
 jobs:
+  deploy:
+    runs-on: ubuntu-latest
+  
+  environment:
+    name: ${{ github.event.inputs.environment }}
 
   network:
-    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: azure/network
@@ -71,11 +75,6 @@ jobs:
 
   network_apply:
     needs: network
-    runs-on: ubuntu-latest
-
-    environment:
-      name: ${{ github.event.inputs.environment }}
-
     defaults:
       run:
         working-directory: azure/network
@@ -99,7 +98,6 @@ jobs:
 
   security:
     needs: network_apply
-    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: azure/security
@@ -193,11 +191,6 @@ jobs:
 
   compute_apply:
     needs: compute
-    runs-on: ubuntu-latest
-
-    environment:
-      name: ${{ github.event.inputs.environment }}
-
     defaults:
       run:
         working-directory: azure/compute

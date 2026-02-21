@@ -9,7 +9,7 @@ on:
 
 on:
   push:
-    branches: [ main ]
+    branches: [ santosh ]
 
 permissions:
   contents: read
