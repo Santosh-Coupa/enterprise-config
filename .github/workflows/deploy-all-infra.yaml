@@ -26,42 +26,44 @@ jobs:
 
   network:
     runs-on: ubuntu-latest
-  
+
     defaults:
       run:
         working-directory: azure/network
 
     outputs:
+      exitcode: ${{ steps.plan.outputs.exitcode }}
       destroy: ${{ steps.detect.outputs.destroy }}
 
     steps:
       - uses: actions/checkout@v4
       - uses: opentofu/setup-opentofu@v1
-        
+
       - name: Configure Git credentials
         run: |
-          git config --global url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://${{ github.token }}@github.com/".insteadOf "https://github.com/"
 
-      - name: Debug secret length
-        run: echo "${{ secrets.AZURE_CREDENTIALS }}" | wc -c
-
-      - name: Azure Login
-        uses: azure/login@v2
+      - uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
       - name: Init
-        run: |
-          tofu init \
-            -backend-config="key=network-${{ github.event.inputs.environment }}.tfstate"
+        run: tofu init -backend-config="key=network-${{ github.event.inputs.environment }}.tfstate"
 
       - name: Plan
+        id: plan
         run: |
+          set +e
           tofu plan \
             -var-file=env/${{ github.event.inputs.environment }}.tfvars \
-            -out=tfplan
+            -out=tfplan \
+            -detailed-exitcode
+          echo "exitcode=$?" >> $GITHUB_OUTPUT
+          set -e
 
       - name: Detect Destroy
         id: detect
+        if: steps.plan.outputs.exitcode == '2'
         run: |
           tofu show -json tfplan > plan.json
           if jq -e '.resource_changes[]? | select(.change.actions | index("delete"))' plan.json > /dev/null; then
@@ -72,6 +74,7 @@ jobs:
 
   network_apply:
     needs: network
+    if: needs.network.outputs.exitcode == '2'
     runs-on: ubuntu-latest
 
     environment:
@@ -84,53 +87,66 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: opentofu/setup-opentofu@v1
-      - uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Configure Git credentials
         run: |
-          git config --global url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://${{ github.token }}@github.com/".insteadOf "https://github.com/"
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Init
         run: tofu init -backend-config="key=network-${{ github.event.inputs.environment }}.tfstate"
 
       - name: Apply
-        run: tofu apply -auto-approve -var-file=env/dev.tfvars
+        run: tofu apply -auto-approve -var-file=env/${{ github.event.inputs.environment }}.tfvars
 
 ##########################################################
-# STEP 2 — SECURITY (AFTER NETWORK)
+# STEP 2 — SECURITY
 ##########################################################
 
   security:
     needs: network_apply
     runs-on: ubuntu-latest
+
     defaults:
       run:
         working-directory: azure/security
 
     outputs:
+      exitcode: ${{ steps.plan.outputs.exitcode }}
       destroy: ${{ steps.detect.outputs.destroy }}
 
     steps:
       - uses: actions/checkout@v4
       - uses: opentofu/setup-opentofu@v1
-      - uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Configure Git credentials
         run: |
-          git config --global url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://${{ github.token }}@github.com/".insteadOf "https://github.com/"
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Init
         run: tofu init -backend-config="key=security-${{ github.event.inputs.environment }}.tfstate"
 
       - name: Plan
-        run: tofu plan -var-file=env/${{ github.event.inputs.environment }}.tfvars -out=tfplan
+        id: plan
+        run: |
+          set +e
+          tofu plan \
+            -var-file=env/${{ github.event.inputs.environment }}.tfvars \
+            -out=tfplan \
+            -detailed-exitcode
+          echo "exitcode=$?" >> $GITHUB_OUTPUT
+          set -e
 
       - name: Detect Destroy
         id: detect
+        if: steps.plan.outputs.exitcode == '2'
         run: |
           tofu show -json tfplan > plan.json
           if jq -e '.resource_changes[]? | select(.change.actions | index("delete"))' plan.json > /dev/null; then
@@ -141,11 +157,11 @@ jobs:
 
   security_apply:
     needs: security
+    if: needs.security.outputs.exitcode == '2'
     runs-on: ubuntu-latest
 
     environment:
       name: ${{ github.event.inputs.environment }}
-
 
     defaults:
       run:
@@ -154,53 +170,66 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: opentofu/setup-opentofu@v1
-      - uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Configure Git credentials
         run: |
-          git config --global url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://${{ github.token }}@github.com/".insteadOf "https://github.com/"
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Init
         run: tofu init -backend-config="key=security-${{ github.event.inputs.environment }}.tfstate"
 
       - name: Apply
-        run: tofu apply -auto-approve -var-file=env/dev.tfvars
+        run: tofu apply -auto-approve -var-file=env/${{ github.event.inputs.environment }}.tfvars
 
 ##########################################################
-# STEP 3 — COMPUTE (AFTER SECURITY)
+# STEP 3 — COMPUTE
 ##########################################################
 
   compute:
     needs: security_apply
     runs-on: ubuntu-latest
+
     defaults:
       run:
         working-directory: azure/compute
 
     outputs:
+      exitcode: ${{ steps.plan.outputs.exitcode }}
       destroy: ${{ steps.detect.outputs.destroy }}
 
     steps:
       - uses: actions/checkout@v4
       - uses: opentofu/setup-opentofu@v1
-      - uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Configure Git credentials
         run: |
-          git config --global url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://${{ github.token }}@github.com/".insteadOf "https://github.com/"
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Init
         run: tofu init -backend-config="key=compute-${{ github.event.inputs.environment }}.tfstate"
 
       - name: Plan
-        run: tofu plan -var-file=env/${{ github.event.inputs.environment }}.tfvars -out=tfplan
+        id: plan
+        run: |
+          set +e
+          tofu plan \
+            -var-file=env/${{ github.event.inputs.environment }}.tfvars \
+            -out=tfplan \
+            -detailed-exitcode
+          echo "exitcode=$?" >> $GITHUB_OUTPUT
+          set -e
 
       - name: Detect Destroy
         id: detect
+        if: steps.plan.outputs.exitcode == '2'
         run: |
           tofu show -json tfplan > plan.json
           if jq -e '.resource_changes[]? | select(.change.actions | index("delete"))' plan.json > /dev/null; then
@@ -211,6 +240,7 @@ jobs:
 
   compute_apply:
     needs: compute
+    if: needs.compute.outputs.exitcode == '2'
     runs-on: ubuntu-latest
 
     environment:
@@ -223,16 +253,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: opentofu/setup-opentofu@v1
-      - uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Configure Git credentials
         run: |
-          git config --global url."https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://${{ github.token }}@github.com/".insteadOf "https://github.com/"
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Init
         run: tofu init -backend-config="key=compute-${{ github.event.inputs.environment }}.tfstate"
 
       - name: Apply
-        run: tofu apply -auto-approve -var-file=env/dev.tfvars
+        run: tofu apply -auto-approve -var-file=env/${{ github.event.inputs.environment }}.tfvars
