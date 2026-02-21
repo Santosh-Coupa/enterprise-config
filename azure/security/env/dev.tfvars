@@ -1,3 +1,6 @@
+resource_group = "rg-dev"
+location       = "centralindia"
+
 nsg_name = "dev-nsg"
 
 security_rules = [
