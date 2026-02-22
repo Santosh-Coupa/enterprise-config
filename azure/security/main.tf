@@ -8,4 +8,6 @@ module "security" {
   resource_group = var.resource_group
   location       = var.location
   nsg_name       = var.nsg_name
+  security_rules - var.security_rules
+
 }
