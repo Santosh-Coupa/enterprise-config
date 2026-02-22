@@ -1,5 +1,9 @@
+
+provider "azurerm" {
+  features {}
+}
 module "compute" {
-  source = "git::https://github.com/Santosh-Coupa/infra-modules.git//azure-vm-bluegreen?ref=v1.0.0"
+  source = "git::https://github.com/Santosh-Coupa/infra-modules.git//azure-vm-bluegreen"
 
   resource_group = var.resource_group
   location       = var.location
