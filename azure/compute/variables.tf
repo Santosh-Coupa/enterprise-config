@@ -12,3 +12,7 @@ variable "nsg_id" {}
 variable "active_color" {
   type = string
 }
+
+variable "environment" {
+  type = string
+}
