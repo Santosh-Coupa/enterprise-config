@@ -142,6 +142,8 @@ jobs:
             -var-file=env/${{ github.event.inputs.environment }}.tfvars \
             -out=tfplan \
             -detailed-exitcode
+          tofu show -json tfplan > plan.json
+          cat plan.json
           echo "exitcode=$?" >> $GITHUB_OUTPUT
           set -e
 
