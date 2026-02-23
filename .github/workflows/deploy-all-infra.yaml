@@ -68,6 +68,9 @@ jobs:
           fi
         shell: bash
 
+      - name: Debug Exitcode
+        run: echo "Exitcode is ${{ steps.plan.outputs.exitcode }}"
+
       - name: Detect Destroy
         id: detect
         if: steps.plan.outputs.exitcode == '2'
@@ -106,7 +109,7 @@ jobs:
         run: tofu init -backend-config="key=network-${{ github.event.inputs.environment }}.tfstate"
 
       - name: Apply
-        run: tofu apply -auto-approve -var-file=env/${{ github.event.inputs.environment }}.tfvars
+        run: tofu apply -auto-approve -var-file=env/${{ github.event.inputs.environment }}.tfvars 
 
 ##########################################################
 # STEP 2 — SECURITY
@@ -157,6 +160,9 @@ jobs:
             tofu show -json tfplan > plan.json
           fi
         shell: bash
+
+      - name: Debug Exitcode
+        run: echo "Exitcode is ${{ steps.plan.outputs.exitcode }}"
 
       - name: Detect Destroy
         id: detect
@@ -249,6 +255,9 @@ jobs:
             tofu show -json tfplan > plan.json
           fi
         shell: bash
+
+      - name: Debug Exitcode
+        run: echo "Exitcode is ${{ steps.plan.outputs.exitcode }}"
 
       - name: Detect Destroy
         id: detect
