@@ -247,6 +247,7 @@ jobs:
             -detailed-exitcode
           exitcode=$?
           echo "exitcode=$exitcode" >> $GITHUB_OUTPUT
+          echo "Exitcode is ${{ steps.plan.outputs.exitcode }}"
           if [ "$exitcode" -eq 1 ]; then
             exit 1
           fi
