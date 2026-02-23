@@ -10,7 +10,6 @@ data "azurerm_subnet" "existing" {
 
 data "azurerm_network_security_group" "existing" {
   name                 = var.nsg_name
-  virtual_network_name = var.vnet_name
   resource_group_name  = var.resource_group
 }
 
