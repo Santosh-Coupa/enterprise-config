@@ -63,6 +63,9 @@ jobs:
           if [ "$exitcode" -eq 1 ]; then
             exit 1
           fi
+          if [ "$exitcode" -eq 2 ]; then
+            tofu show -json tfplan > plan.json
+          fi
         shell: bash
 
       - name: Detect Destroy
@@ -151,6 +154,9 @@ jobs:
           echo "exitcode=$exitcode" >> $GITHUB_OUTPUT
           if [ "$exitcode" -eq 1 ]; then
             exit 1
+          fi
+          if [ "$exitcode" -eq 2 ]; then
+            tofu show -json tfplan > plan.json
           fi
         shell: bash
 
@@ -241,6 +247,10 @@ jobs:
           echo "exitcode=$exitcode" >> $GITHUB_OUTPUT
           if [ "$exitcode" -eq 1 ]; then
             exit 1
+          fi
+
+          if [ "$exitcode" -eq 2 ]; then
+            tofu show -json tfplan > plan.json
           fi
         shell: bash
 
