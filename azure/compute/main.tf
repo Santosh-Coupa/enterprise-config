@@ -26,4 +26,5 @@ module "compute" {
   subnet_id      = data.terraform_remote_state.network.outputs.subnet_id
   nsg_id         = var.nsg_id
   active_color   = var.active_color
+  environment    = var.environment 
 }
