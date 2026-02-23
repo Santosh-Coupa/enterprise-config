@@ -225,7 +225,7 @@ jobs:
           set +e
           tofu plan \
             -var-file=env/${{ github.event.inputs.environment }}.tfvars \
-            -var="environment=${{ github.event.inputs.environment }}"
+            -var="environment=${{ github.event.inputs.environment }}" \
             -out=tfplan \
             -detailed-exitcode
           echo "exitcode=$?" >> $GITHUB_OUTPUT
