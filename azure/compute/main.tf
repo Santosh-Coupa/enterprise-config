@@ -2,16 +2,10 @@
 provider "azurerm" {
   features {}
 }
-
-data "terraform_remote_state" "network" {
-  backend = "azurerm"
-
-  config = {
-    resource_group_name  = "tf-state-rg"
-    storage_account_name = "tfstate253253"
-    container_name       = "tfstate"
-    key                  = "network-${var.environment}.tfstate"
-  }
+data "azurerm_subnet" "existing" {
+  name                 = var.subnet_name
+  virtual_network_name = var.vnet_name
+  resource_group_name  = var.resource_group
 }
 
 module "compute" {
