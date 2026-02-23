@@ -81,7 +81,6 @@ jobs:
 
   network_apply:
     needs: network
-    if: needs.network.outputs.exitcode == '2'
     runs-on: ubuntu-latest
 
     environment:
@@ -115,7 +114,6 @@ jobs:
 
   security:
     needs: [network, network_apply]
-    if: always()
     runs-on: ubuntu-latest
 
     defaults:
@@ -173,7 +171,6 @@ jobs:
 
   security_apply:
     needs: security
-    if: needs.security.outputs.exitcode == '2'
     runs-on: ubuntu-latest
 
     environment:
@@ -208,7 +205,6 @@ jobs:
   compute:
     #needs: security_apply
     needs: [security, security_apply]
-    if: always()
     runs-on: ubuntu-latest
 
     defaults:
