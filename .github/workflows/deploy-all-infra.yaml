@@ -294,7 +294,7 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Init
-        run: tofu init -backend-config="key=compute-${{ github.event.inputs.environment }}.tfstate"
+        run: tofu init -backend-config="key=compute-${{ github.event.inputs.environment }}.tfstate" -var="environment=${{ github.event.inputs.environment }}" 
 
       - name: Apply
-        run: tofu apply -auto-approve -var-file=env/${{ github.event.inputs.environment }}.tfvars
+        run: tofu apply -auto-approve -var-file=env/${{ github.event.inputs.environment }}.tfvars -var="environment=${{ github.event.inputs.environment }}" 
