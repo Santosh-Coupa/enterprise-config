@@ -267,7 +267,6 @@ jobs:
 
   compute_apply:
     needs: compute
-    if: needs.compute.outputs.exitcode == '2'
     runs-on: ubuntu-latest
 
     environment:
