@@ -4,11 +4,11 @@ concurrency:
   group: infra-global
   cancel-in-progress: false
 
-on:
-  push:
-    paths:
-      - "modules/network/**"
-      - "azure/network/**"
+#on:
+#  push:
+#    paths:
+#      - "modules/network/**"
+#      - "azure/network/**"
 
 permissions:
   contents: read
